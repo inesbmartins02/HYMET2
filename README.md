@@ -2,14 +2,14 @@
 
 ## Installation and Configuration
 
-Follow the steps below to install and configure **HYMET**
+Follow the steps below to install and configure **HYMET2**
 
 ### 1. Installation with Conda (Recommended)
 
 The easiest way to install HYMET is through Bioconda:
 
 ```bash
-conda install -c bioconda hymet
+conda install -c bioconda hymet2
 ```
 
 After installation, you will need to download the reference databases as described in the [Reference Sketched Databases](#reference-sketched-databases) section.
@@ -19,8 +19,8 @@ After installation, you will need to download the reference databases as describ
 Alternatively, you can clone the repository to your local environment:
 
 ```bash
-git clone https://github.com/ieeta-pt/HYMET.git
-cd HYMET
+git clone https://github.com/inesbmartins02/HYMET2
+cd HYMET2
 ```
 
 ### 3. Installation with Docker
@@ -147,7 +147,9 @@ The databases required to run the tool are available for download on Google Driv
   - **mash.sh**: Script to run Mash.
   - **downloadDB.py**: Script to download genomes.
   - **minimap.sh**: Script to run Minimap2.
-  - **classification.py**: Script for taxonomic classification.
+  - **mashmap.sh**: Script to run MashMap.
+  - **classificationminimap.py**: Script for taxonomic classification (for Minimap's alignment files).
+  - **classificationmashmap.py**: Script for taxonomic classification (for Mashmap's alignment files).
 - **taxonomy_files/**: Directory containing downloaded taxonomy files.
 - **data/**: Directory for storing intermediate data.
   - sketch1.msh
