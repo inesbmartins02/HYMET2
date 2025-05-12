@@ -1,0 +1,24 @@
+name: hymet_env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - perl
+  - python=3.8
+  - mash
+  - minimap2
+  - mashmap
+  - wget
+  - pandas
+  - numpy
+  - pip
+  - biopython
+  - csvkit
+  - gzip
+  - shutil
+  - logging
+  - multiprocessing
+  - argparse
+  - pip:
+    - biopython
