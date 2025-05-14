@@ -1,11 +1,11 @@
 name: hymet_env
 channels:
-  - conda-forge
   - bioconda
+  - conda-forge
   - defaults
 dependencies:
-  - perl
   - python=3.8
+  - perl
   - mash
   - minimap2
   - mashmap
@@ -15,10 +15,9 @@ dependencies:
   - pip
   - biopython
   - csvkit
-  - gzip
-  - shutil
-  - logging
-  - multiprocessing
-  - argparse
+  - trimmomatic
+  - bowtie2
+  - spades
+  - seqtk
   - pip:
-    - biopython
+      - biopython  
