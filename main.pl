@@ -3,12 +3,25 @@ use strict;
 use warnings;
 use Time::HiRes qw(time);
 use Cwd 'abs_path';
+use Getopt::Long;
 
 # User-configurable parameters
 my $mash_threshold_refseq = 0.95;   # Threshold for RefSeq
 my $mash_threshold_gtdb = 0.95;     # Threshold for GTDB
 my $mash_threshold_custom = 0.95;  # Threshold for custom database
 my $classification_processes = 8;    # Number of processes for classification
+my $max_top_candidates = 5;          # Default maximum number of top candidates to show
+
+# Get command line options
+GetOptions(
+    "max-candidates=i" => \$max_top_candidates,
+    # You can add other options here if needed
+) or die "Error in command line arguments\n";
+
+# Validate max candidates
+$max_top_candidates = 1 if $max_top_candidates < 1;
+$max_top_candidates = 10 if $max_top_candidates > 10;  # Setting a reasonable upper limit
+print "Maximum top candidates to display: $max_top_candidates\n";
 
 # Base paths
 my $base_path = '.';
@@ -22,7 +35,6 @@ unless (-d $input_dir) {
     die "Error: The input directory '$input_dir' does not exist.\n";
 }
 
-#my $input_dir = "/mnt/storagelv/home/inesbrancomartins/Tese/stateoftheart/database/refdb/protozoa/outputGCFfiltrado";
 my $output_dir = "$base_path/output";
 my $data_dir = "$base_path/data";
 my $cache_dir = "$base_path/cache";
@@ -200,7 +212,8 @@ if ($large_proportion > 70) {
         run_command("$mashmap_script '$concatenated_input' '$genome' '$output_dir/${base}_mashmap.out' 8");
         run_command("python3 '$classification_mashmap' --mashmap '$output_dir/${base}_mashmap.out' ".
                    "--taxonomy '$taxonomy_file' --hierarchy '$hierarchy_file' ".
-                   "--output '$output_dir/${base}_classified.tsv' --processes 8");
+                   "--output '$output_dir/${base}_classified.tsv' --processes 8 ".
+                   "--max-candidates $max_top_candidates");
     }
 } else {
     print "Predominance of small genomes, using Minimap2\n";
@@ -213,7 +226,8 @@ if ($large_proportion > 70) {
                    "'$output_dir/reference.mmi' '$output_dir/resultados.paf'");
         run_command("python3 '$classification_minimap' --paf '$output_dir/resultados.paf' ".
                    "--taxonomy '$taxonomy_file' --hierarchy '$hierarchy_file' ".
-                   "--output '$output_dir/classified_sequences.tsv' --processes 8");
+                   "--output '$output_dir/classified_sequences.tsv' --processes 8 ".
+                   "--max-candidates $max_top_candidates");
     } else {
         print "WARNING: No small genomes found to process with Minimap2!\n";
     }

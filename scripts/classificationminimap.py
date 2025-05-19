@@ -1,4 +1,4 @@
-# !/usr/bin/env python3
+#!/usr/bin/env python3
 import os
 import csv
 from collections import defaultdict
@@ -6,6 +6,7 @@ import argparse
 from multiprocessing import Pool
 import logging
 import sys
+from operator import itemgetter
 
 csv.field_size_limit(sys.maxsize)
 
@@ -95,51 +96,24 @@ def calculate_weighted_lineage(refs, ref_abundance, taxonomy):
     
     return taxid_weights, total_weight
 
-def determine_lca(taxid_weights, total_weight, taxonomy_hierarchy):
+def get_top_lineages(taxid_weights, total_weight, taxonomy_hierarchy, max_options):
     if total_weight == 0:
-        return "Unknown", "root", 0.0
+        return [("Unknown", "root", 0.0)]
 
-    lineages = []
+    lineage_scores = []
     for taxid, weight in taxid_weights.items():
         if taxid in taxonomy_hierarchy:
-            lineage = taxonomy_hierarchy[taxid].split(";")
-            lineages.append((lineage, weight/total_weight))
-
-    if not lineages:
-        return "Unknown", "root", 0.0
-
-    consensus = {}
-    confidence = 1.0
-    rank_order = [
-        'superkingdom', 'phylum', 'class', 'order',
-        'family', 'genus', 'species', 'strain'
-    ]
-
-    for rank in rank_order:
-        level_counts = defaultdict(float)
-        for lineage, weight in lineages:
-            for part in lineage:
-                if part.startswith(f"{rank}:"):
-                    level_counts[part] += weight
-                    break
-        
-        if level_counts:
-            best_match, conf = max(level_counts.items(), key=lambda x: x[1])
-            consensus[rank] = best_match
-            confidence *= conf
-        else:
-            break  # Stop at first missing rank
-
-    lineage_parts = [consensus.get(rank) for rank in rank_order if consensus.get(rank)]
-    if not lineage_parts:
-        return "Unknown", "root", 0.0
-
-    full_lineage = ";".join(lineage_parts)
-    level = determine_taxonomic_level(full_lineage)
-    return full_lineage, level, min(confidence, 1.0)
+            lineage = taxonomy_hierarchy[taxid]
+            level = determine_taxonomic_level(lineage)
+            confidence = weight / total_weight
+            lineage_scores.append((lineage, level, confidence))
+    
+    # Sort by confidence score descending and limit to max_options
+    lineage_scores.sort(key=itemgetter(2), reverse=True)
+    return lineage_scores[:max_options] if lineage_scores else [("Unknown", "root", 0.0)]
 
 def process_query(args):
-    query, refs, ref_abundance, taxonomy, taxonomy_hierarchy = args
+    query, refs, ref_abundance, taxonomy, taxonomy_hierarchy, max_candidates = args
     
     # Check for exact matches first
     exact_matches = [ref for ref, _, is_exact in refs if is_exact and ref in taxonomy]
@@ -148,20 +122,20 @@ def process_query(args):
         if taxid in taxonomy_hierarchy:
             lineage = taxonomy_hierarchy[taxid]
             level = determine_taxonomic_level(lineage)
-            return (query, lineage, level, 1.0)
-
-    # Calculate LCA for non-exact matches
-    taxid_weights, total_weight = calculate_weighted_lineage(refs, ref_abundance, taxonomy)
-    lineage, level, confidence = determine_lca(taxid_weights, total_weight, taxonomy_hierarchy)
+            return (query, [(lineage, level, 1.0)])
     
-    return (query, lineage, level, confidence)
+    # Calculate weighted lineages for non-exact matches
+    taxid_weights, total_weight = calculate_weighted_lineage(refs, ref_abundance, taxonomy)
+    top_lineages = get_top_lineages(taxid_weights, total_weight, taxonomy_hierarchy, max_candidates)
+    
+    return (query, top_lineages)
 
-def main_process(paf_file, taxonomy_file, hierarchy_file, output_file, processes=4):
+def main_process(paf_file, taxonomy_file, hierarchy_file, output_file, processes=4, max_candidates=5):
     taxonomy = load_taxonomy_file(taxonomy_file)
     taxonomy_hierarchy = load_taxonomy_hierarchy_file(hierarchy_file)
     query_map, ref_abundance = parse_paf_file(paf_file)
 
-    tasks = [(query, refs, ref_abundance, taxonomy, taxonomy_hierarchy) 
+    tasks = [(query, refs, ref_abundance, taxonomy, taxonomy_hierarchy, max_candidates) 
              for query, refs in query_map.items()]
 
     results = []
@@ -170,16 +144,21 @@ def main_process(paf_file, taxonomy_file, hierarchy_file, output_file, processes
 
     with open(output_file, 'w') as f:
         writer = csv.writer(f, delimiter='\t')
-        writer.writerow(['Query', 'Lineage', 'Taxonomic Level', 'Confidence'])
+        writer.writerow(['Query', 'Confidence', 'Lineage', 'Taxonomic Level'])
         
         classified = 0
-        for query, lineage, level, confidence in results:
-            if lineage != 'Unknown':
+        for query, lineages in results:
+            primary_lineage = lineages[0][0]
+            if primary_lineage != 'Unknown':
                 classified += 1
-            writer.writerow([query, lineage, level, f"{confidence:.4f}"])
+            
+            # Write each lineage (up to max_candidates) as separate rows
+            for lineage, level, confidence in lineages[:max_candidates]:
+                writer.writerow([query, f"{confidence:.4f}", lineage, level])
 
     logging.info(f"Classification complete. Results saved to {output_file}")
     logging.info(f"Classified: {classified}/{len(results)} ({classified/len(results):.1%})")
+    logging.info(f"Maximum candidates shown per query: {max_candidates}")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Advanced LCA/Best Match Taxonomic Classifier")
@@ -188,15 +167,24 @@ if __name__ == "__main__":
     parser.add_argument("--hierarchy", required=True, help="Taxonomy hierarchy file")
     parser.add_argument("--output", required=True, help="Output TSV file")
     parser.add_argument("--processes", type=int, default=4, help="Number of parallel processes")
+    parser.add_argument("--max-candidates", type=int, default=5, 
+                       help="Maximum number of candidate classifications to show (1-10)")
     
     args = parser.parse_args()
+    
+    # Validate max-candidates
+    if args.max_candidates < 1:
+        args.max_candidates = 1
+        logging.warning("max-candidates cannot be less than 1. Setting to 1.")
+    elif args.max_candidates > 10:
+        args.max_candidates = 10
+        logging.warning("max-candidates cannot be greater than 10. Setting to 10.")
     
     main_process(
         args.paf,
         args.taxonomy,
         args.hierarchy,
         args.output,
-        args.processes
+        args.processes,
+        args.max_candidates
     )
-
-
