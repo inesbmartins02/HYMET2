@@ -6,9 +6,9 @@ use Cwd 'abs_path';
 use Getopt::Long;
 
 # User-configurable parameters
-my $mash_threshold_refseq = 0.95;   # Threshold for RefSeq
-my $mash_threshold_gtdb = 0.95;     # Threshold for GTDB
-my $mash_threshold_custom = 0.95;  # Threshold for custom database
+my $mash_threshold_refseq = 0.98;   # Threshold for RefSeq
+my $mash_threshold_gtdb = 0.98;     # Threshold for GTDB
+my $mash_threshold_custom = 0.98;  # Threshold for custom database
 my $classification_processes = 8;    # Number of processes for classification
 my $max_top_candidates = 5;          # Default maximum number of top candidates to show
 

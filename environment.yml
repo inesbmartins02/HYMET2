@@ -19,5 +19,7 @@ dependencies:
   - bowtie2
   - spades
   - seqtk
+  - metabat2
+  - samtools
   - pip:
       - biopython  
