@@ -96,7 +96,7 @@ process_file() {
     fi
   fi
 
-  # Step 4: Assembly
+    # Step 4: Assembly
   if [ "$RUN_ASSEMBLY" = true ]; then
     echo "### Step 4: Assembly ###"
     ASSEMBLY_OUT="${base_out}/${filename}_assembly"
@@ -106,9 +106,16 @@ process_file() {
     if [ "$RUN_BINNING" = true ] && [ -f "${ASSEMBLY_OUT}/contigs.fasta" ]; then
       echo "### Step 5: Binning ###"
       BINNING_OUT="${base_out}/${filename}_bins"
-      bash "${SCRIPT_DIR}/4_binning/run.sh" "${ASSEMBLY_OUT}/contigs.fasta" "$ASSEMBLY_OUT" "$BINNING_OUT" "$THREADS"
+      
+      # Passar contigs e reads para o script de binning
+      bash "${SCRIPT_DIR}/4_binning/run.sh" \
+        "${ASSEMBLY_OUT}/contigs.fasta" \
+        "$current_input" \
+        "$BINNING_OUT" \
+        "$THREADS"
     fi
   fi
+
 
   echo "Processing completed for: $filename"
 }
